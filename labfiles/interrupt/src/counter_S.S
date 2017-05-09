@@ -5,6 +5,8 @@
 /*
 ** (((0x3F200000) & 0x00FFFFFF) + (((0x3F200000) >> 4) & 0x0F000000) + 0xF0000000)
 */
+
+
 gpio_addr: .word 0
 
 gpio_output:
@@ -16,11 +18,15 @@ gpio_input:
 .word 10
 .word 9
 
+
 .text
-/*
-** Division
-*/
+
 getGPIO:
+/*LDR r1, 0x3F200000
+ADD gpio_addr, r1
+LDR r1, 0x00FFFFFF
+ADD gpio_addr, r1
+*/
 LDR r1, =#0x3F200000
 LDR r2, =#0x00FFFFFF
 AND r2,r1
@@ -31,49 +37,202 @@ LDR r3, =#0x0F000000
 ADD r2, r3
 LDR r3, =gpio_addr
 STR r2, [r3]
+
 bx lr
 
 /*
 **(gpio_addr+ (4*(GPIO_NR/10))) |= (1<<(((GPIO_NR)%10)*3));
 */
-
+/*
+** OUTPUT FUNCTIONS ************************************************************
+*/
 setOutput:
-PUSH{pc, r4}
+PUSH {lr}
 /*
 Laddar in alla variabler på rätt plats så att idiven ger ett korrekt resultat
 */
 LDR r2, =gpio_addr
-LDR r0, =gpio_output
-LDR r1, #10
+LDR r2, [r2]
+MOV r1, #10
 
 BL idiv
 
-LDR r3, #4
+MOV r3, #4
 MUL r3, r0
 ADD r3, r2
 
 MOV r2, #3
 MUL r2, r1
-LSL r2, #1
-
-ORR r1, r3, r2
+MOV r1, #1
+LSL r1, r2
+/*
+SKRIV UT r1 och r3
+*/
+LDR r0, [r3]
+ORR r1, r0, r1
+STR r1, [r3]
 /*MOV r4, r1*/
-POP{lr,r4}
+POP {pc}
+
+
+outputLoop:
+PUSH {r4, r5, lr}
+
+LDR r4, =gpio_output
+MOV r5, #0
+loopO:
+LDR r0, [r4, r5, LSL #2]
+ADD r5, #1
+BL setOutput
+CMP r5, #4
+BNE loopO
+
+POP {r4, r5, pc}
 
 /*
-Loopa den övre funktionen i en SEPARAT funktion, ta in ett argument(ladd ain på r0),
+** INPUT FUNCTIONS *************************************************************
+*/
+setInput:
+PUSH {lr}
+/*
+Laddar in alla variabler på rätt plats så att idiven ger ett korrekt resultat
+*/
+LDR r2, =gpio_addr
+LDR r2, [r2]
+MOV r1, #10
+
+BL idiv
+
+MOV r3, #4
+MUL r3, r0
+ADD r3, r2
+
+MOV r2, #3
+MUL r2, r1
+MOV r1, #7
+LSL r1, r2
+
+MVN r1, r1
+
+LDR r0, [r3]
+AND r1, r0, r1
+STR r1, [r3]
+/*MOV r4, r1*/
+POP {pc}
+
+
+inputLoop:
+PUSH {r4, r5, lr}
+
+LDR r4, =gpio_input
+MOV r5, #0
+loopI:
+LDR r0, [r4, r5, LSL #2]
+ADD r5, #1
+BL setOutput
+CMP r5, #2
+BNE loopI
+
+POP {r4, r5, pc}
+
+/*
+** HIGH FUNCTION ***************************************************************
+*/
+
+outputHigh:
+PUSH {lr}
+/*
+Laddar in alla variabler på rätt plats så att idiven ger ett korrekt resultat
+*/
+LDR r2, =gpio_addr
+LDR r2, [r2]
+MOV r1, #32
+
+BL idiv
+
+MOV r3, #4
+ADD r0, #7
+MUL r3, r0
+ADD r3, r2
+
+MOV r2, #1
+LSL r2, r1
+
+LDR r0, [r3]
+STR r2, [r3]
+
+POP {pc}
+
+highLoop:
+PUSH {r4, r5, lr}
+
+LDR r4, =gpio_output
+MOV r5, #0
+loopH:
+LDR r0, [r4, r5, LSL #2]
+ADD r5, #1
+BL outputHigh
+CMP r5, #4
+BNE loopH
+
+POP {r4, r5, pc}
+
+
+/*
+** LOW FUNCTION ***************************************************************
+*/
+
+outputLow:
+PUSH {lr}
+/*
+Laddar in alla variabler på rätt plats så att idiven ger ett korrekt resultat
+*/
+LDR r2, =gpio_addr
+LDR r2, [r2]
+MOV r1, #32
+
+BL idiv
+
+MOV r3, #4
+ADD r0, #10
+MUL r3, r0
+ADD r3, r2
+
+MOV r2, #1
+LSL r2, r1
+
+LDR r0, [r3]
+STR r2, [r3]
+
+POP {pc}
+
+lowLoop:
+PUSH {r4, r5, lr}
+
+LDR r4, =gpio_output
+MOV r5, #0
+loopL:
+LDR r0, [r4, r5, LSL #2]
+ADD r5, #1
+BL outputLow
+CMP r5, #4
+BNE loopL
+
+POP {r4, r5, pc}
+/*
+Loopa den övre funktionen i en SEPARAT funktion, ta in ett argument(ladda in på r0),
 och använd argumentet.
-Spara unden svaren vi får, för de ska användas senare för att få oss att gråta
-Rör inte setOuput(vilket är high läget), då den behövs för avstängning
+Spara undan svaren vi får (genom att pusha och poppa register), för de ska användas senare för att få oss att gråta
+Rör inte setOutput(vilket är
+gh läget), då den behövs för avstängning
 */
 
 
-
+/*
+** Division
+*/
 idiv:
-LDR r1, 0x3F200000
-ADD gpio_addr, r1
-LDR r1, 0x00FFFFFF
-ADD gpio_addr, r1
+
 
 	/* r0 innehåller N */
 	/* r1 innehåller D */
@@ -97,7 +256,6 @@ ADD gpio_addr, r1
 .GLOBAL counter_isr_up
 counter_isr_up:
 PUSH {lr}
-
 POP {pc}
 /*
 ** Avbrottsrutin som kallas när ett avbrott sker. Ska räkna neråt
@@ -105,7 +263,6 @@ POP {pc}
 .GLOBAL counter_isr_down
 counter_isr_down:
 PUSH {lr}
-
 POP {pc}
 /*
  * Sätt upp åtkomst till GPIO-pinnarnas minne
@@ -113,7 +270,13 @@ POP {pc}
 .GLOBAL setup
 setup:
 PUSH {lr}
+
 BL getGPIO
+
+BL outputLoop
+
+
+
 POP {pc}
 /*
 ** Ta bort åtkomst till GPIO

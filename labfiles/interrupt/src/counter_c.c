@@ -25,9 +25,6 @@ irqreturn_t counter_isr_down(int, void*);
 static int __init btnrpi_init(void)
 {
 
-	int gpio_addr = (((addr) & 0x00FFFFFF) + (((addr) >> 4) &0x0F000000) + 0xF0000000)
-	printf("%d\n", gpio_addr);
-
 	setup();
 	if(request_irq(IRQ1, counter_isr_up, IRQF_TRIGGER_FALLING, "counterUp#btn", NULL)){
 		printk(KERN_ERR "COUNTER - Unable to request IRQ. Aborting.\n");
