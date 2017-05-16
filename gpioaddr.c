@@ -9,6 +9,9 @@ int main() {
   int test3 = (gpio_addr+ (4*(7 + (22/32))));
   int test4 = 1 << (22% 32);
 
+  //int test5 = (gpio_addr+ (4*(7 + (22/32)))) = 1 << (22% 32);
+
+
   printf("%x %x %x %x\n", test1, test2, test3, test4);
 }
 

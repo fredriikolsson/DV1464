@@ -5,7 +5,7 @@
 /*
 ** (((0x3F200000) & 0x00FFFFFF) + (((0x3F200000) >> 4) & 0x0F000000) + 0xF0000000)
 */
-
+text: .asciz "OutputValue: %x\n"
 
 gpio_addr: .word 0
 
@@ -31,10 +31,11 @@ LDR r1, =#0x3F200000
 LDR r2, =#0x00FFFFFF
 AND r2,r1
 LDR r3, =#0x0F000000
-LSR r3, #4
-ADD r2, r3
-LDR r3, =#0x0F000000
-ADD r2, r3
+LSR r1, #4
+AND r3, r1
+LDR r1, =#0xF0000000
+ADD r1, r3
+ADD r2, r1
 LDR r3, =gpio_addr
 STR r2, [r3]
 
@@ -55,7 +56,9 @@ LDR r2, =gpio_addr
 LDR r2, [r2]
 MOV r1, #10
 
+PUSH {r2}
 BL idiv
+POP {r2}
 
 MOV r3, #4
 MUL r3, r0
@@ -101,7 +104,9 @@ LDR r2, =gpio_addr
 LDR r2, [r2]
 MOV r1, #10
 
+PUSH {r2}
 BL idiv
+POP {r2}
 
 MOV r3, #4
 MUL r3, r0
@@ -148,7 +153,9 @@ LDR r2, =gpio_addr
 LDR r2, [r2]
 MOV r1, #32
 
+PUSH {r2}
 BL idiv
+POP {r2}
 
 MOV r3, #4
 ADD r0, #7
@@ -157,6 +164,14 @@ ADD r3, r2
 
 MOV r2, #1
 LSL r2, r1
+
+/*
+LDR r0, =text
+PUSH {r1, r3}
+MOV r1, r2
+BL printk
+POP {r1, r3}
+*/
 
 LDR r0, [r3]
 STR r2, [r3]
@@ -191,7 +206,9 @@ LDR r2, =gpio_addr
 LDR r2, [r2]
 MOV r1, #32
 
+PUSH {r2}
 BL idiv
+POP {r2}
 
 MOV r3, #4
 ADD r0, #10
@@ -219,6 +236,24 @@ CMP r5, #4
 BNE loopL
 
 POP {r4, r5, pc}
+
+
+/*
+** Short wait
+*/
+
+shortWait:
+PUSH {lr}
+MOV r1, #1
+waitLoop:
+ADD r1, #1
+SUB r1, #1
+ADD r1, #1
+CMP r1, #150
+BNE waitLoop
+POP {pc}
+
+
 /*
 Loopa den övre funktionen i en SEPARAT funktion, ta in ett argument(ladda in på r0),
 och använd argumentet.
@@ -232,8 +267,6 @@ gh läget), då den behövs för avstängning
 ** Division
 */
 idiv:
-
-
 	/* r0 innehåller N */
 	/* r1 innehåller D */
 	mov r2, r1
@@ -275,6 +308,14 @@ BL getGPIO
 
 BL outputLoop
 
+BL highLoop
+
+BL inputLoop
+
+
+/*
+** SET PULLUP loop för båda knapparna
+*/
 
 
 POP {pc}
@@ -284,5 +325,9 @@ POP {pc}
 .GLOBAL setdown
 setdown:
 PUSH {lr}
+/*
+	ALLT FÖR AVSLUT SET PULL till 0 efter lowLoop
+*/
+BL lowLoop
 
 POP {pc}
