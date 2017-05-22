@@ -38,6 +38,7 @@ ADD r1, r3
 ADD r2, r1
 LDR r3, =gpio_addr
 STR r2, [r3]
+LDR r2, =gpio_addr
 
 bx lr
 
@@ -244,6 +245,7 @@ POP {r4, r5, pc}
 
 shortWait:
 PUSH {lr}
+
 MOV r1, #1
 waitLoop:
 ADD r1, #1
@@ -251,7 +253,164 @@ SUB r1, #1
 ADD r1, #1
 CMP r1, #150
 BNE waitLoop
+
 POP {pc}
+
+/*
+** Set pull-code
+*/
+
+setReset:
+PUSH {lr}
+
+LDR r2, =gpio_addr
+LDR r2, [r2]
+
+ADD r2, #148
+MOV r0, #0
+STR r0, [r2]
+
+LDR r2, =gpio_addr
+LDR r2, [r2]
+
+ADD r2, #152
+MOV r0, #0
+STR r0, [r2]
+
+BL shortWait
+
+POP {pc}
+
+
+
+setPullUp:
+PUSH {lr}
+
+LDR r2, =gpio_addr
+LDR r2, [r2]
+
+ADD r2, #148
+MOV r0, #2
+STR r0, [r2]
+
+BL shortWait
+
+POP {pc}
+
+/*
+** Set pullDown-code
+*/
+
+setPullDown:
+PUSH {lr}
+
+LDR r2, =gpio_addr
+LDR r2, [r2]
+
+ADD r2, #148
+MOV r0, #1
+STR r0, [r2]
+
+BL shortWait
+
+POP {pc}
+
+
+
+
+pinPullUp:
+PUSH {lr}
+
+LDR r2, =gpio_addr
+LDR r2, [r2]
+MOV r1, #32
+
+PUSH {r2}
+BL idiv
+POP {r2}
+
+LDR r2, =gpio_addr
+LDR r2, [r2]
+ADD r2, #152
+
+MOV r3, #1
+LSL r3, r1
+
+/*
+LDR r0, =text
+PUSH {r1, r2}
+MOV r1, r3
+BL printk
+POP {r1, r2}
+*/
+
+STR r3, [r2]
+BL shortWait
+POP {pc}
+
+pinPullUpLoop:
+PUSH {r4, r5, lr}
+
+LDR r4, =gpio_output
+MOV r5, #0
+loopUp:
+LDR r0, [r4, r5, LSL #2]
+ADD r5, #1
+BL pinPullUp
+CMP r5, #4
+BNE loopUp
+
+POP {r4, r5, pc}
+
+
+/*
+** PIN PULL DOWN ----------------------- BEHÖVS EJ????????????????
+*/
+
+pinPullDown:
+PUSH {lr}
+
+LDR r2, =gpio_addr
+LDR r2, [r2]
+MOV r1, #32
+
+PUSH {r2}
+BL idiv
+POP {r2}
+
+LDR r2, =gpio_addr
+LDR r2, [r2]
+ADD r2, #152
+
+MOV r3, #1
+LSL r3, r1
+
+/*
+LDR r0, =text
+PUSH {r1, r2}
+MOV r1, r3
+BL printk
+POP {r1, r2}
+*/
+
+STR r3, [r2]
+BL shortWait
+POP {pc}
+
+pinPullDownLoop:
+PUSH {r4, r5, lr}
+
+LDR r4, =gpio_output
+MOV r5, #0
+loopDown:
+LDR r0, [r4, r5, LSL #2]
+ADD r5, #1
+BL pinPullDown
+CMP r5, #4
+BNE loopDown
+
+POP {r4, r5, pc}
+
 
 
 /*
@@ -289,6 +448,9 @@ idiv:
 .GLOBAL counter_isr_up
 counter_isr_up:
 PUSH {lr}
+
+BL setPullUp
+
 POP {pc}
 /*
 ** Avbrottsrutin som kallas när ett avbrott sker. Ska räkna neråt
@@ -296,6 +458,9 @@ POP {pc}
 .GLOBAL counter_isr_down
 counter_isr_down:
 PUSH {lr}
+
+BL setPullDown
+
 POP {pc}
 /*
  * Sätt upp åtkomst till GPIO-pinnarnas minne
@@ -304,16 +469,23 @@ POP {pc}
 setup:
 PUSH {lr}
 
+
 BL getGPIO
 
 BL outputLoop
 
 BL highLoop
-
+/*
 BL inputLoop
+
+BL shortWait
+*/
+
+BL pinPullUpLoop
 
 
 /*
+BL pinPullDownLoop
 ** SET PULLUP loop för båda knapparna
 */
 
@@ -328,6 +500,10 @@ PUSH {lr}
 /*
 	ALLT FÖR AVSLUT SET PULL till 0 efter lowLoop
 */
+
 BL lowLoop
+
+BL setReset
+
 
 POP {pc}
