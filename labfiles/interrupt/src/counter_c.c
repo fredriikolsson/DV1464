@@ -2,7 +2,7 @@
 #include <linux/kernel.h>		// Needed for KERN_INFO
 #include <linux/interrupt.h>	// Needed for register_irq
 
-#define IRQ1 176	// Byt ut 0 mot IRQ för knapp som räknar upp
+#define IRQ1 174	// Byt ut 0 mot IRQ för knapp som räknar upp
 #define IRQ2 175	// Byt ut 0 mot IRQ för knapp som räknar ner
 
 /*

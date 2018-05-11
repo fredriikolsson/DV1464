@@ -1,13 +1,16 @@
 .data
 /*
 ** Variabler här
-*/
-/*
+*
 ** (((0x3F200000) & 0x00FFFFFF) + (((0x3F200000) >> 4) & 0x0F000000) + 0xF0000000)
 */
 text: .asciz "OutputValue: %x\n"
 
+testText: .asciz "Testar %x\n"
+
 gpio_addr: .word 0
+
+counter: .word 1
 
 gpio_output:
 .word 17
@@ -15,8 +18,8 @@ gpio_output:
 .word 27
 .word 22
 gpio_input:
-.word 10
 .word 9
+.word 8
 
 
 .text
@@ -131,11 +134,24 @@ inputLoop:
 PUSH {r4, r5, lr}
 
 LDR r4, =gpio_input
+
 MOV r5, #0
+
 loopI:
 LDR r0, [r4, r5, LSL #2]
+
+PUSH {r0, r1, r2, r3}
+LDR r1, [r4, r5, LSL #2]
+LDR r0, =testText
+/*
+MOV r1, r2
+*/
+BL printk
+POP {r0, r1, r2, r3}
+
+
 ADD r5, #1
-BL setOutput
+BL setInput
 CMP r5, #2
 BNE loopI
 
@@ -180,19 +196,46 @@ STR r2, [r3]
 POP {pc}
 
 highLoop:
-PUSH {r4, r5, lr}
+PUSH {r4, r5, r6, lr}
 
 LDR r4, =gpio_output
 MOV r5, #0
+
+LDR r6, =counter
+LDR r0, [r6]
+MOV r6, r0
+
 loopH:
-LDR r0, [r4, r5, LSL #2]
+
+LDR r2, [r4, r5, LSL #2]
 ADD r5, #1
+
+
+MOV r0, r6
+PUSH {r2}
+BL idiv
+POP {r2}
+
+/**
+*** Kontrollera vad som blir på r0 och r1 efter division, testa att printa **********************************************************
+**/
+
+MOV r6, r0
+/*
+** Kolla om talet är ojämnt, isåfall kalla på outputHigh
+*/
+CMP r1, #1
+BEQ escapeRoute
+
 BL outputHigh
+
+
+escapeRoute:
+
 CMP r5, #4
 BNE loopH
 
-POP {r4, r5, pc}
-
+POP {r4, r5, r6, pc}
 
 /*
 ** LOW FUNCTION ***************************************************************
@@ -304,6 +347,11 @@ POP {pc}
 setPullDown:
 PUSH {lr}
 
+/*
+LDR r0, =text
+
+BL printk
+*/
 LDR r2, =gpio_addr
 LDR r2, [r2]
 
@@ -333,6 +381,9 @@ LDR r2, =gpio_addr
 LDR r2, [r2]
 ADD r2, #152
 
+/**
+** Pin pull up är två, pin pull down är 1 (vi hade 1 här förut)
+*/
 MOV r3, #1
 LSL r3, r1
 
@@ -411,6 +462,15 @@ BNE loopDown
 
 POP {r4, r5, pc}
 
+lightCounter:
+PUSH {r4, r5, lr}
+
+LDR r5, =gpio_output
+LDR r0, [r5]
+
+
+POP {r4, r5, pc}
+
 
 
 /*
@@ -451,6 +511,14 @@ PUSH {lr}
 
 BL setPullUp
 
+LDR r2, =counter
+LDR r0, [r2]
+ADD r0, #1
+
+CMP r0, #16
+MOVEQ r0, #1
+STR r0, [r2]
+
 POP {pc}
 /*
 ** Avbrottsrutin som kallas när ett avbrott sker. Ska räkna neråt
@@ -458,28 +526,43 @@ POP {pc}
 .GLOBAL counter_isr_down
 counter_isr_down:
 PUSH {lr}
-
+/*
 BL setPullDown
+*/
+LDR r2, =counter
+LDR r0, [r2]
+ADD r0, #1
+
+CMP r0, #0
+MOVEQ r0, #15
+STR r0, [r2]
+
+
 
 POP {pc}
 /*
- * Sätt upp åtkomst till GPIO-pinnarnas minne
- */
+** Sätt upp åtkomst till GPIO-pinnarnas minne
+*/
 .GLOBAL setup
 setup:
 PUSH {lr}
 
+LDR r0, =testText
+
+BL printk
 
 BL getGPIO
 
 BL outputLoop
 
-BL highLoop
 /*
+BL highLoop
+*/
 BL inputLoop
-
+/*
 BL shortWait
 */
+
 
 BL pinPullUpLoop
 
