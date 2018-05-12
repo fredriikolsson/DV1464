@@ -140,15 +140,16 @@ MOV r5, #0
 loopI:
 LDR r0, [r4, r5, LSL #2]
 
+/*
 PUSH {r0, r1, r2, r3}
 LDR r1, [r4, r5, LSL #2]
 LDR r0, =testText
-/*
+
 MOV r1, r2
-*/
+
 BL printk
 POP {r0, r1, r2, r3}
-
+*/
 
 ADD r5, #1
 BL setInput
@@ -210,7 +211,6 @@ loopH:
 LDR r2, [r4, r5, LSL #2]
 ADD r5, #1
 
-
 MOV r0, r6
 PUSH {r2}
 BL idiv
@@ -219,6 +219,14 @@ POP {r2}
 /**
 *** Kontrollera vad som blir på r0 och r1 efter division, testa att printa **********************************************************
 **/
+/*
+PUSH {r0, r2, r3}
+
+LDR r0, =testText
+BL printk
+
+POP {r0, r2, r3}
+*/
 
 MOV r6, r0
 /*
@@ -369,8 +377,7 @@ POP {pc}
 pinPullUp:
 PUSH {lr}
 
-LDR r2, =gpio_addr
-LDR r2, [r2]
+
 MOV r1, #32
 
 PUSH {r2}
@@ -405,6 +412,8 @@ PUSH {r4, r5, lr}
 LDR r4, =gpio_output
 MOV r5, #0
 loopUp:
+
+
 LDR r0, [r4, r5, LSL #2]
 ADD r5, #1
 BL pinPullUp
@@ -509,6 +518,14 @@ idiv:
 counter_isr_up:
 PUSH {lr}
 
+/*
+PUSH {r0, r2, r3}
+
+LDR r0, =testText
+BL printk
+
+POP {r0, r2, r3}
+
 BL setPullUp
 
 LDR r2, =counter
@@ -518,6 +535,13 @@ ADD r0, #1
 CMP r0, #16
 MOVEQ r0, #1
 STR r0, [r2]
+
+BL highLoop
+*/
+
+LDR r0, =testText
+MOV r1, #1
+BL printk
 
 POP {pc}
 /*
@@ -529,6 +553,7 @@ PUSH {lr}
 /*
 BL setPullDown
 */
+/*
 LDR r2, =counter
 LDR r0, [r2]
 ADD r0, #1
@@ -537,7 +562,11 @@ CMP r0, #0
 MOVEQ r0, #15
 STR r0, [r2]
 
+*/
 
+LDR r0, =testText
+MOV r1, #2
+BL printk
 
 POP {pc}
 /*
@@ -547,30 +576,17 @@ POP {pc}
 setup:
 PUSH {lr}
 
-LDR r0, =testText
-
-BL printk
-
 BL getGPIO
-
 BL outputLoop
 
-/*
+/* Vi körde denna förut för att testa om lamporna fungerade
 BL highLoop
 */
 BL inputLoop
 /*
-BL shortWait
-*/
-
-
-BL pinPullUpLoop
-
-
-/*
-BL pinPullDownLoop
 ** SET PULLUP loop för båda knapparna
 */
+BL pinPullUpLoop
 
 
 POP {pc}
