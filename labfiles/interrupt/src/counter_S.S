@@ -377,7 +377,6 @@ POP {pc}
 pinPullUp:
 PUSH {lr}
 
-
 MOV r1, #32
 
 PUSH {r2}
@@ -388,19 +387,8 @@ LDR r2, =gpio_addr
 LDR r2, [r2]
 ADD r2, #152
 
-/**
-** Pin pull up är två, pin pull down är 1 (vi hade 1 här förut)
-*/
 MOV r3, #1
 LSL r3, r1
-
-/*
-LDR r0, =text
-PUSH {r1, r2}
-MOV r1, r3
-BL printk
-POP {r1, r2}
-*/
 
 STR r3, [r2]
 BL shortWait
