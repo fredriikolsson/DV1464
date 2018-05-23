@@ -306,16 +306,62 @@ STR r2, [r3]
 POP {pc}
 
 highLoop:
+PUSH {r4, r5, r6, lr}
+
+LDR r4, =gpio_output
+MOV r5, #0
+
+
+/* Ladda in counter på r0, lägg värdet vi ska dela med på r1*/
+LDR r0, =counter
+LDR r6, [r0]
+
+loopH:
+/* Dela Värdet på Counter på hälften*/
+/* För att få det binärt så delar vi på hälften tills kvoten blir 1*/
+/* Där resten inte är 0, så är det en 1 i binärt*/
+/* Eftersom att vi ska tända de delar som har en rest som är större än noll (alltså 1 för att vi delar på 2)*/
+/* idiv får ju kvoten i r0, och resten i r1 - så vi får rätt värde delat på r0 efter division som vi ska dela med */
+MOV r0, r6
+MOV r1, #2
+
+PUSH {r2}
+BL idiv
+POP {r2}
+
+MOV r6, r0
+/* Jämför resultatet, är det någon rest kalla på outputHigh för att tända lampa på DEN POSITIONEN SOM R5 tar fram*/
+/* Eftersom att R5 är flyttad till den lampa som skall tändas*/
+CMP r1, #0
+BNE endOfLoop
+/* Spara counter i r6 */
+/* Ladda in GPIO NR i r0 igen */
+/* Den går hit om den ska tända, eftersom att den inte branchar om CMP inte sätter flagga - Fortsätter i koden så att säga*/
+LDR r0, [r4, r5, LSL #2]
+BL outputHigh
+
+endOfLoop:
+CMP r6, #1
+BEQ endEnd
+
+ADD r5, #1
+CMP r5, #4
+BNE loopH
+
+endEnd:
+POP {r4, r5, r6, pc}
+
+lightLoop:
 PUSH {r4, r5, lr}
 
 LDR r4, =gpio_output
 MOV r5, #0
-loopH:
+loopLight:
 LDR r0, [r4, r5, LSL #2]
 ADD r5, #1
 BL outputHigh
-CMP r5, #4
-BNE loopH
+CMP r5, #1
+BNE loopLight
 
 POP {r4, r5, pc}
 
@@ -368,7 +414,7 @@ CMP r0, #16
 MOVEQ r0, #1
 STR r0, [r2]
 
-
+BL highLoop
 
 POP {pc}
 .GLOBAL counter_isr_down
@@ -385,6 +431,8 @@ PUSH {lr}
  MOVEQ r0, #15
  STR r0, [r2]
 
+ BL highLoop
+
 POP {pc}
 .GLOBAL setup
 setup:
@@ -395,7 +443,11 @@ BL getGPIO
 BL outputLoop
 BL inputLoop
 
-BL highLoop
+/*BL highLoop
+*/
+/*
+** lightLoop (ska) tända bara en lampa (men den tänder alla) för att programmet ska fungera
+*/
 
 BL setPullUp
 BL pinPullUpLoop
